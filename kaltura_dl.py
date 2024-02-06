@@ -6,11 +6,12 @@ import requests
 
 temp_dir = "temp_dl"
 
-def main(url, output_file):
-    # Download all the available segments from the url.
-    # Append /seg-x-v1-a1.ts, check for successful response, and save the file
+def main(source, query_string, output_file):
 
-    response = requests.get(url + "/seg-1-v1-a1.ts")
+    url = source + "/seg-1-v1-a1.ts?" + query_string
+
+    session = requests.Session()
+    response = session.get(url)
 
     if response.status_code != 200:
         print("Invalid URL or video does not exist.")
@@ -23,15 +24,15 @@ def main(url, output_file):
     fileList = []
     print("Downloading pieces...")
     while response.status_code == 200:
-        curr_seg = "/seg-{}-v1-a1.ts".format(count)
-        response = requests.get(url + curr_seg)
-        with open(temp_dir + curr_seg, 'wb') as f:
+        curr_seg = f"/seg-{count}-v1-a1.ts?"
+        curr_seg_name = f"/seg-{count}-v1-a1.ts"
+        response = session.get(source + curr_seg + query_string)
+        print("\nResponse: " + source + curr_seg + query_string)
+        with open(temp_dir + curr_seg_name, 'wb') as f:
             f.write(response.content)
-        fileList.append(temp_dir + curr_seg)
+        fileList.append(temp_dir + curr_seg_name)
         count += 1
 
-    # Edge case: Last piece seems to not contain any video or audio stream
-    # If the file less less than 1KB, ignore and delete it
     if os.path.getsize(fileList[-1]) < 1000:
         os.remove(fileList[-1])
         fileList = fileList[:-1]
@@ -51,13 +52,10 @@ def main(url, output_file):
     print("Done")
 
 if __name__ == "__main__":
-    # Expected input URL format:
-    # https://streaming.video.ubc.ca/ ........  a6rb/name/a.mp4
-    parser = argparse.ArgumentParser(description='Download and stitch UBC Kalutra videos')
-    parser.add_argument('-url', action='store', dest='url', default=None, help='URL ending in .../a.mp4')
-    parser.add_argument('-output', action='store', dest='output', default=None, help='Output file name')
+     parser = argparse.ArgumentParser(description='Download and stitch UBC Kalutra videos')
+     parser.add_argument('-src', action='store', dest='src', default=None, help='URL ending in .../a.mp4')
+     parser.add_argument('-qstr', action='store', dest='qstr', default=None, help="everything after the '.../seg-xx-v1-a1.ts?'" )
+     parser.add_argument('-output', action='store', dest='output', default=None, help='Output file name')
 
-    args = parser.parse_args()
-    # Retain the url upto ".mp4"
-    url = args.url[:args.url.index(".mp4") + 4]
-    main(url, args.output)
+     args = parser.parse_args()
+     main(args.src, args.qstr, args.output)
